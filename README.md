@@ -4,7 +4,7 @@ Wrappers used to integrate ElectionGuard python code onto Decidim Elections modu
 
 * Trustee wrapper: used to perform the trustees main tasks, the Key Ceremony and the Tally.
 * Voter wrapper: used to encrypt a ballot.
-* Bulletin Board wrapper: used to perform the ballot box tasks, during all the election lifecicle.
+* Bulletin Board wrapper: used to perform the ballot box tasks, during all the election lifecycle.
 
 ## Quick Start
 

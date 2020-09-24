@@ -8,6 +8,6 @@ setup(name='decidim.electionguard',
       author_email='leo@codegram.com',
       license='MIT',
       packages=['decidim.electionguard'],
-      package_dir = {
+      package_dir={
         'decidim.electionguard': 'src'
       })
