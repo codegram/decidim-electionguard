@@ -7,8 +7,7 @@ def create_election_test_message():
         "trustees": [
             {"name": "alicia", "public_key": "..."},
             {"name": "bob", "public_key": "..."},
-            {"name": "clara", "public_key": "..."},
-            {"name": "david", "public_key": "..."}
+            {"name": "clara", "public_key": "..."}
         ],
         "description": {
             "name": {"text": [{"value": "Test election", "language": "en"}]},
