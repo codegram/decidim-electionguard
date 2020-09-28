@@ -1,6 +1,8 @@
-from base64 import b64encode
+from base64 import b64encode, b64decode
 from electionguard.group import ElementModP, ElementModQ
 import electionguard.serializable
+from gmpy2 import mpz
+
 
 # -- TEMPORARY MONKEYPATCH JSONS SERIALIZATION --
 old_set_serializers = electionguard.serializable.set_serializers
@@ -14,6 +16,7 @@ def set_serializers():
 
 
 electionguard.serializable.set_serializers = set_serializers
+# -----------------------------------------------
 
 
 def serialize_big_number(obj: object, **_):
@@ -24,11 +27,23 @@ def serialize_big_number(obj: object, **_):
             byteorder='little'
         )
     ).decode("utf-8")
-# -----------------------------------------------
 
 
-def serialize(obj):
-    return electionguard.serializable.write_json(obj, True)
+def deserialize_big_number(obj, cls, **_):
+    return cls(mpz(int.from_bytes(b64decode(obj), byteorder='little')))
+
+
+def serialize(obj, include_private: bool = False):
+    return electionguard.serializable.write_json_object(obj, not include_private)
+
+
+def deserialize_key(obj):
+    return deserialize_big_number(obj, ElementModP)
+
+
+class InvalidElectionDescription(Exception):
+    """Exception raised when the election description is invalid."""
+    pass
 
 
 def complete_election_description(election_description: dict) -> dict:
