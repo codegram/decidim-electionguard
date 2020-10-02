@@ -6,7 +6,7 @@ from electionguard.group import ElementModQ
 from electionguard.utils import get_optional
 from typing import List
 from .common import Context, ElectionStep, Wrapper
-from .utils import InvalidElectionDescription, complete_election_description, serialize, deserialize_key
+from .utils import InvalidElectionDescription, MissingJointKey, complete_election_description, serialize, deserialize_key
 
 
 class VoterContext(Context):
@@ -14,6 +14,7 @@ class VoterContext(Context):
     election_builder: ElectionBuilder
     election_metadata: InternalElectionDescription
     election_context: CiphertextElectionContext
+    has_joint_key: bool = False
 
 
 class ProcessCreateElection(ElectionStep):
@@ -46,6 +47,7 @@ class ProcessJointElectionKey(ElectionStep):
 
         context.election_builder.set_public_key(get_optional(joint_key))
         context.election_metadata, context.election_context = get_optional(context.election_builder.build())
+        context.has_joint_key = True
 
 
 class Voter(Wrapper):
@@ -56,6 +58,9 @@ class Voter(Wrapper):
         self.ballot_id = ballot_id
 
     def encrypt(self, ballot: dict) -> dict:
+        if not self.context.has_joint_key:
+            raise MissingJointKey()
+
         ballot_style: str = self.context.election.ballot_styles[0].object_id
         contests: List[PlaintextBallotContest] = []
 
@@ -68,6 +73,8 @@ class Voter(Wrapper):
             contests.append(PlaintextBallotContest(contest.object_id, selections))
 
         plaintext_ballot = PlaintextBallot(self.ballot_id, ballot_style, contests)
+
+        # TODO: store the audit information somewhere
 
         return serialize(encrypt_ballot(
             plaintext_ballot,

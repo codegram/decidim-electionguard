@@ -3,7 +3,6 @@ from electionguard.group import ElementModP, ElementModQ
 import electionguard.serializable
 from gmpy2 import mpz
 
-
 # -- TEMPORARY MONKEYPATCH JSONS SERIALIZATION --
 old_set_serializers = electionguard.serializable.set_serializers
 old_set_deserializers = electionguard.serializable.set_deserializers
@@ -34,7 +33,7 @@ def serialize_big_number(obj: object, **_):
             (number.bit_length() + 7) // 8,
             byteorder='little'
         )
-    ).decode("utf-8")
+    ).decode('utf-8')
 
 
 def deserialize_big_number(obj, cls, **_):
@@ -54,44 +53,53 @@ def deserialize_key(obj):
 
 
 class InvalidElectionDescription(Exception):
-    """Exception raised when the election description is invalid."""
+    '''Exception raised when the election description is invalid.'''
     pass
+
+
+class MissingJointKey(Exception):
+    '''Exception raised when trying to perform an action that depends on the joint key but it is missing.'''
+    pass
+
+
+def pair_with_object_id(obj):
+    return (obj.object_id, obj)
 
 
 def complete_election_description(election_description: dict) -> dict:
     complete_description = {
         **election_description,
-        "contact_information": {
-            "address_line": [],
-            "name": "Organization name",
-            "email": [{"annotation": "contact", "value": "contact@example.org"}],
-            "phone": []
+        'contact_information': {
+            'address_line': [],
+            'name': 'Organization name',
+            'email': [{'annotation': 'contact', 'value': 'contact@example.org'}],
+            'phone': []
         },
-        "election_scope_id": "test-election",
-        "type": "special",
-        "geopolitical_units": [
+        'election_scope_id': 'test-election',
+        'type': 'special',
+        'geopolitical_units': [
             {
-                "object_id": "a-place",
-                "name": "A place",
-                "type": "county",
-                "contact_information": {
-                    "address_line": [],
-                    "name": "Organization name",
-                    "email": [{"annotation": "contact", "value": "contact@example.org"}]
+                'object_id': 'a-place',
+                'name': 'A place',
+                'type': 'county',
+                'contact_information': {
+                    'address_line': [],
+                    'name': 'Organization name',
+                    'email': [{'annotation': 'contact', 'value': 'contact@example.org'}]
                 },
-                "phone": []
+                'phone': []
             }
         ],
-        "parties": [],
-        "ballot_styles": [
+        'parties': [],
+        'ballot_styles': [
             {
-                "object_id": "ballot-style",
-                "geopolitical_unit_ids": ["a-place"]
+                'object_id': 'ballot-style',
+                'geopolitical_unit_ids': ['a-place']
             }
         ]
     }
 
-    for contest in complete_description["contests"]:
-        contest["electoral_district_id"] = "a-place"
+    for contest in complete_description['contests']:
+        contest['electoral_district_id'] = 'a-place'
 
     return complete_description
