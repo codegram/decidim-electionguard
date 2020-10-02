@@ -27,6 +27,9 @@ class Wrapper:
         return self.step.skip_message(message_type)
 
     def process_message(self, message_type: str, message: dict) -> dict:
+        if self.step.skip_message(message_type):
+            return
+
         result = self.step.process_message(message_type, message, self.context)
 
         if self.step.next_step:
