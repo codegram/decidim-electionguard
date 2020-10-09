@@ -3,8 +3,6 @@ from electionguard.ballot import CiphertextBallot, from_ciphertext_ballot, Ballo
 from electionguard.ballot_validator import ballot_is_valid_for_election
 from electionguard.decryption_share import CiphertextDecryptionSelection
 from electionguard.decrypt_with_shares import decrypt_selection_with_decryption_shares
-from electionguard.election import CiphertextElectionContext, ElectionDescription, InternalElectionDescription
-from electionguard.election_builder import ElectionBuilder
 from electionguard.elgamal import elgamal_combine_public_keys
 from electionguard.group import ElementModP
 from electionguard.tally import CiphertextTally, tally_ballot, PlaintextTallyContest, PlaintextTallySelection
@@ -13,19 +11,13 @@ from electionguard.utils import get_optional
 from typing import Dict, Set
 from .common import Context, ElectionStep, Wrapper
 from .utils import (
-  InvalidElectionDescription, MissingJointKey,
-  complete_election_description, pair_with_object_id,
+  MissingJointKey, pair_with_object_id,
   serialize, deserialize, deserialize_key
 )
 
 
 class BulletinBoardContext(Context):
-    number_of_guardians: int
     public_keys: Dict[str, ElementModP]
-    election: ElectionDescription
-    election_builder: ElectionBuilder
-    election_metadata: InternalElectionDescription
-    election_context: CiphertextElectionContext
     has_joint_key: bool
     tally: CiphertextTally
     shares: Dict[GUARDIAN_ID, Dict]
@@ -39,24 +31,9 @@ class BulletinBoardContext(Context):
 class ProcessCreateElection(ElectionStep):
     message_type = 'create_election'
 
-    number_of_guardians: int
-    quorum: int
-    election_description: dict
-
     def process_message(self, message_type: str, message: dict, context: Context):
-        self.parse_create_election_message(message)
-        context.number_of_guardians = self.number_of_guardians
-        context.election = ElectionDescription.from_json_object(complete_election_description(self.election_description))
-        if not context.election.is_valid():
-            raise InvalidElectionDescription()
-
-        context.election_builder = ElectionBuilder(self.number_of_guardians, self.quorum, context.election)
+        context.build_election(message)
         self.next_step = ProcessTrusteeElectionKeys()
-
-    def parse_create_election_message(self, message: dict):
-        self.number_of_guardians = len(message['trustees'])
-        self.quorum = message['scheme']['parameters']['quorum']
-        self.election_description = message['description']
 
 
 class ProcessTrusteeElectionKeys(ElectionStep):
@@ -80,7 +57,7 @@ class ProcessTrusteeElectionPartialKey(ElectionStep):
     partial_keys_received: Set[str] = set()
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        self.partial_keys_received.add(message[0]['owner_id'])
+        self.partial_keys_received.add(message['owner_id'])
         # TO-DO: verify partial keys?
 
         if len(self.partial_keys_received) == context.number_of_guardians:
@@ -93,7 +70,7 @@ class ProcessTrusteeVerification(ElectionStep):
     verification_received: Set[str] = set()
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        self.verification_received.add(message[0]['verifier_id'])
+        self.verification_received.add(message['owner_id'])
         # TO-DO: check verifications?
 
         if len(self.verification_received) == context.number_of_guardians:

@@ -1,5 +1,25 @@
+from electionguard.election import CiphertextElectionContext, ElectionDescription, InternalElectionDescription
+from electionguard.election_builder import ElectionBuilder
+from .utils import complete_election_description, InvalidElectionDescription
+
+
 class Context:
-    pass
+    election: ElectionDescription
+    election_builder: ElectionBuilder
+    election_metadata: InternalElectionDescription
+    election_context: CiphertextElectionContext
+    number_of_guardians: int
+    quorum: int
+
+    def build_election(self, election_creation: dict):
+        self.election = ElectionDescription.from_json_object(complete_election_description(election_creation['description']))
+
+        if not self.election.is_valid():
+            raise InvalidElectionDescription()
+
+        self.number_of_guardians = len(election_creation['trustees'])
+        self.quorum = election_creation['scheme']['parameters']['quorum']
+        self.election_builder = ElectionBuilder(self.number_of_guardians, self.quorum, self.election)
 
 
 class ElectionStep:

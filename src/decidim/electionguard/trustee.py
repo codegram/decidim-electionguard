@@ -1,7 +1,5 @@
 from electionguard.decryption import compute_decryption_share_for_selection
 from electionguard.decryption_share import CiphertextDecryptionContest, CiphertextDecryptionSelection
-from electionguard.election import CiphertextElectionContext, ElectionDescription, InternalElectionDescription
-from electionguard.election_builder import ElectionBuilder
 from electionguard.key_ceremony import PublicKeySet, ElectionPartialKeyBackup
 from electionguard.guardian import Guardian
 from electionguard.tally import CiphertextTallyContest
@@ -10,18 +8,10 @@ from electionguard.utils import get_optional
 from pickle import loads, dumps
 from typing import Dict, Set
 from .common import Context, ElectionStep, Wrapper
-from .utils import (
-  InvalidElectionDescription,
-  complete_election_description, pair_with_object_id,
-  serialize, deserialize, deserialize_key
-)
+from .utils import pair_with_object_id, serialize, deserialize, deserialize_key
 
 
 class TrusteeContext(Context):
-    election: ElectionDescription
-    election_builder: ElectionBuilder
-    election_metadata: InternalElectionDescription
-    election_context: CiphertextElectionContext
     guardian: Guardian
     guardian_id: str
     guardian_ids: Set[str]
@@ -32,36 +22,19 @@ class TrusteeContext(Context):
 
 class ProcessCreateElection(ElectionStep):
     order: int
-    guardian_ids: Set[str]
-    quorum: int
-    election_description: dict
 
     message_type = 'create_election'
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        self.parse_create_election_message(context.guardian_id, message)
+        context.build_election(message)
 
-        context.election = ElectionDescription.from_json_object(complete_election_description(self.election_description))
-        if not context.election.is_valid():
-            raise InvalidElectionDescription()
-
-        context.election_builder = ElectionBuilder(len(self.guardian_ids), self.quorum, context.election)
-
-        context.guardian_ids = self.guardian_ids
-        context.guardian = Guardian(context.guardian_id, self.order, len(self.guardian_ids), self.quorum)
+        guardian_ids = [trustee['name'] for trustee in message['trustees']]
+        context.guardian_ids = set(guardian_ids)
+        order = guardian_ids.index(context.guardian_id)
+        context.guardian = Guardian(context.guardian_id, order, context.number_of_guardians, context.quorum)
 
         self.next_step = ProcessTrusteeElectionKeys()
-
-        public_keys = context.guardian.share_public_keys()
-
-        return serialize(public_keys)
-
-    def parse_create_election_message(self, guardian_id: int, message: dict):
-        guardian_ids = [trustee['name'] for trustee in message['trustees']]
-        self.guardian_ids = set(guardian_ids)
-        self.order = guardian_ids.index(guardian_id)
-        self.quorum = message['scheme']['parameters']['quorum']
-        self.election_description = message['description']
+        return serialize(context.guardian.share_public_keys())
 
 
 class ProcessTrusteeElectionKeys(ElectionStep):
@@ -77,21 +50,24 @@ class ProcessTrusteeElectionKeys(ElectionStep):
             context.guardian.generate_election_partial_key_backups()
             self.next_step = ProcessTrusteesPartialElectionKey()
 
-            return [
-                serialize(context.guardian.share_election_partial_key_backup(guardian_id))
-                for guardian_id in context.guardian_ids
-                if context.guardian_id != guardian_id
-            ]
+            return {
+                'owner_id': context.guardian_id,
+                'partial_keys': [
+                    serialize(context.guardian.share_election_partial_key_backup(guardian_id))
+                    for guardian_id in context.guardian_ids
+                    if context.guardian_id != guardian_id
+                ]
+            }
 
 
 class ProcessTrusteesPartialElectionKey(ElectionStep):
     message_type = 'trustee_partial_election_key'
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        if message[0]['owner_id'] == context.guardian_id:
+        if message['owner_id'] == context.guardian_id:
             return
 
-        for partial_keys_backup in message:
+        for partial_keys_backup in message['partial_keys']:
             if partial_keys_backup['designated_id'] == context.guardian_id:
                 context.guardian.save_election_partial_key_backup(deserialize(partial_keys_backup, ElectionPartialKeyBackup))
 
@@ -100,27 +76,30 @@ class ProcessTrusteesPartialElectionKey(ElectionStep):
 
             # TODO: check that verifications are OK
 
-            return [
-                serialize(context.guardian.verify_election_partial_key_backup(guardian_id))
-                for guardian_id in context.guardian_ids
-                if context.guardian_id != guardian_id
-            ]
+            return {
+                'owner_id': context.guardian_id,
+                'verifications': [
+                    serialize(context.guardian.verify_election_partial_key_backup(guardian_id))
+                    for guardian_id in context.guardian_ids
+                    if context.guardian_id != guardian_id
+                ]
+            }
 
 
 class ProcessTrusteeVerification(ElectionStep):
-    pending_verifications: Set[str] = None
+    received_verifications: Set[str] = None
 
     message_type = 'trustee_verification'
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        if message[0]['verifier_id'] == context.guardian_id:
+        if message['owner_id'] == context.guardian_id:
             return
 
-        self.pending_verifications = self.pending_verifications or {context.guardian_id}
-        self.pending_verifications.add(message[0]['verifier_id'])
+        self.received_verifications = self.received_verifications or {context.guardian_id}
+        self.received_verifications.add(message['owner_id'])
 
         # TODO: everything should be ok
-        if context.guardian_ids == self.pending_verifications:
+        if context.guardian_ids == self.received_verifications:
             self.next_step = ProcessJointElectionKey()
 
 

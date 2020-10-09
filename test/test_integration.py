@@ -60,7 +60,7 @@ class TestIntegration(unittest.TestCase):
             trustee.process_message('trustee_partial_election_key', partial_public_keys)
             for partial_public_keys in trustees_partial_public_keys
             for trustee in self.trustees
-            if trustee.context.guardian_id != partial_public_keys[0]['owner_id']
+            if trustee.context.guardian_id != partial_public_keys['owner_id']
         ]))
 
         for trustee_verifications in trustees_verifications:
@@ -73,7 +73,7 @@ class TestIntegration(unittest.TestCase):
         # Process verifications results
         for verification in trustees_verifications:
             for trustee in self.trustees:
-                if trustee.context.guardian_id != verification[0]['verifier_id']:
+                if trustee.context.guardian_id != verification['owner_id']:
                     trustee.process_message('trustee_verification', verification)
 
         for trustee in self.trustees:
@@ -135,6 +135,7 @@ class TestIntegration(unittest.TestCase):
                 print(f'Option {selection_id}: ' + str(selection['tally']))
 
     def publish_and_verify(self):
+        # see publish.py
         pass
 
 

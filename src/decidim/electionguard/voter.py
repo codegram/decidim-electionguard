@@ -1,42 +1,22 @@
 from electionguard.ballot import PlaintextBallot, PlaintextBallotContest, PlaintextBallotSelection
-from electionguard.election import CiphertextElectionContext, ElectionDescription, InternalElectionDescription
-from electionguard.election_builder import ElectionBuilder
 from electionguard.encrypt import encrypt_ballot, selection_from
 from electionguard.group import ElementModQ
 from electionguard.utils import get_optional
 from typing import List
 from .common import Context, ElectionStep, Wrapper
-from .utils import InvalidElectionDescription, MissingJointKey, complete_election_description, serialize, deserialize_key
+from .utils import MissingJointKey, serialize, deserialize_key
 
 
 class VoterContext(Context):
-    election: ElectionDescription
-    election_builder: ElectionBuilder
-    election_metadata: InternalElectionDescription
-    election_context: CiphertextElectionContext
     has_joint_key: bool = False
 
 
 class ProcessCreateElection(ElectionStep):
-    number_of_guardians: int
-    quorum: int
-    election_description: dict
-
     message_type = 'create_election'
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        self.parse_create_election_message(message)
-        context.election = ElectionDescription.from_json_object(complete_election_description(self.election_description))
-        if not context.election.is_valid():
-            raise InvalidElectionDescription()
-
-        context.election_builder = ElectionBuilder(self.number_of_guardians, self.quorum, context.election)
+        context.build_election(message)
         self.next_step = ProcessJointElectionKey()
-
-    def parse_create_election_message(self, message: dict):
-        self.number_of_guardians = len(message['trustees'])
-        self.quorum = message['scheme']['parameters']['quorum']
-        self.election_description = message['description']
 
 
 class ProcessJointElectionKey(ElectionStep):
