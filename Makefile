@@ -1,4 +1,4 @@
-.PHONY: all install-mac install-linux install-brew install-apt install-deps lint test test_bulletin_board test_trustee test_voter package
+.PHONY: all install-mac install-linux install-brew install-apt install-deps lint test test_integration test_bulletin_board test_trustee test_voter package
 
 all: lint test package
 
@@ -24,7 +24,10 @@ lint:
 	pipenv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 	pipenv run flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
 
-test: test_bulletin_board test_trustee test_voter
+test: test_integration test_bulletin_board test_trustee test_voter
+
+test_integration:
+	pipenv run python -m unittest test/test_integration.py
 
 test_bulletin_board:
 	pipenv run python -m unittest test/test_bulletin_board.py

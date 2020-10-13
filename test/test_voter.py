@@ -5,15 +5,15 @@ from decidim.electionguard.voter import Voter
 
 class TestVoter(unittest.TestCase):
     def setUp(self):
-        self.voter = Voter("a-voter")
+        self.voter = Voter('a-voter')
 
     def test_cast_vote(self):
-        self.voter.process_message("create_election", create_election_test_message())
-        self.voter.process_message("joint_election_key", joint_election_key_test_message())
+        self.voter.process_message('create_election', create_election_test_message())
+        self.voter.process_message('joint_election_key', joint_election_key_test_message())
 
         encrypted_ballot = self.voter.encrypt({
-            "question1": ["question1-no-selection"],
-            "question2": ["question2-first-project-selection", "question2-fourth-project-selection"]
+            'question1': ['question1-no-selection'],
+            'question2': ['question2-first-project-selection', 'question2-fourth-project-selection']
         })
 
         print(encrypted_ballot)
