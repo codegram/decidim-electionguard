@@ -15,10 +15,10 @@ class TestBulletinBoard(unittest.TestCase):
             self.bulletin_board.process_message('trustee_election_keys', public_keys)
 
         for trustee in election_message['trustees']:
-            self.bulletin_board.process_message('trustee_partial_election_key', {'owner_id': trustee['name']})
+            self.bulletin_board.process_message('trustee_partial_election_key', {'guardian_id': trustee['name']})
 
         for trustee in election_message['trustees']:
-            joint_key = self.bulletin_board.process_message('trustee_verification', {'owner_id': trustee['name']})
+            joint_key = self.bulletin_board.process_message('trustee_verification', {'guardian_id': trustee['name']})
 
         print(joint_key)
 

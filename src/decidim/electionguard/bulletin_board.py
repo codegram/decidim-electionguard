@@ -40,15 +40,13 @@ class ProcessTrusteeElectionKeys(ElectionStep):
     message_type = 'trustee_election_keys'
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        guardian_id, guardian_public_key = self.parse_trustee_public_keys(message)
+        guardian_id = message['owner_id']
+        guardian_public_key = deserialize_key(message['election_public_key'])
         context.public_keys[guardian_id] = guardian_public_key
         # TO-DO: verify keys?
 
         if len(context.public_keys) == context.number_of_guardians:
             self.next_step = ProcessTrusteeElectionPartialKey()
-
-    def parse_trustee_public_keys(self, message: dict):
-        return (message['owner_id'], deserialize_key(message['election_public_key']))
 
 
 class ProcessTrusteeElectionPartialKey(ElectionStep):
@@ -57,7 +55,7 @@ class ProcessTrusteeElectionPartialKey(ElectionStep):
     partial_keys_received: Set[str] = set()
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        self.partial_keys_received.add(message['owner_id'])
+        self.partial_keys_received.add(message['guardian_id'])
         # TO-DO: verify partial keys?
 
         if len(self.partial_keys_received) == context.number_of_guardians:
@@ -70,7 +68,7 @@ class ProcessTrusteeVerification(ElectionStep):
     verification_received: Set[str] = set()
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        self.verification_received.add(message['owner_id'])
+        self.verification_received.add(message['guardian_id'])
         # TO-DO: check verifications?
 
         if len(self.verification_received) == context.number_of_guardians:
@@ -89,8 +87,8 @@ class ProcessCastVote(ElectionStep):
         return ballot_is_valid_for_election(ballot, context.election_metadata, context.election_context)
 
 
-class ProcessTrusteePartialDecrypt(ElectionStep):
-    message_type = 'trustee_partial_decrypt'
+class ProcessTrusteeShare(ElectionStep):
+    message_type = 'trustee_share'
 
     def process_message(self, message_type: str, message: dict, context: Context):
         context.shares[message['guardian_id']] = message
@@ -139,7 +137,7 @@ class BulletinBoard(Wrapper):
 
     def close_ballot_box(self):
         self.context.tally = CiphertextTally('election-results', self.context.election_metadata, self.context.election_context)
-        self.step = ProcessTrusteePartialDecrypt()
+        self.step = ProcessTrusteeShare()
 
     def add_ballot(self, ballot: dict):
         ciphertext_ballot = deserialize(ballot, CiphertextBallot)

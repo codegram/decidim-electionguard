@@ -60,7 +60,7 @@ class TestIntegration(unittest.TestCase):
             trustee.process_message('trustee_partial_election_key', partial_public_keys)
             for partial_public_keys in trustees_partial_public_keys
             for trustee in self.trustees
-            if trustee.context.guardian_id != partial_public_keys['owner_id']
+            if trustee.context.guardian_id != partial_public_keys['guardian_id']
         ]))
 
         for trustee_verifications in trustees_verifications:
@@ -73,11 +73,15 @@ class TestIntegration(unittest.TestCase):
         # Process verifications results
         for verification in trustees_verifications:
             for trustee in self.trustees:
-                if trustee.context.guardian_id != verification['owner_id']:
+                if trustee.context.guardian_id != verification['guardian_id']:
                     trustee.process_message('trustee_verification', verification)
 
         for trustee in self.trustees:
             trustee.process_message('joint_election_key', self.joint_election_key)
+
+        print('\n---- JOINT ELECTION KEY ----')
+        print(repr(self.joint_election_key))
+        print('---- JOINT ELECTION KEY ----\n')
 
     def encrypt_ballots(self):
         possible_answers = [
@@ -121,13 +125,25 @@ class TestIntegration(unittest.TestCase):
 
         tally_cast = self.bulletin_board.get_tally_cast()
 
+        print('\n---- TALLY CAST ----')
+        print(repr(tally_cast))
+        print('---- TALLY CAST ----\n')
+
         trustees_shares = [
-            trustee.process_message('start_decrypt', tally_cast)
+            trustee.process_message('tally_cast', tally_cast)
             for trustee in self.trustees
         ]
 
+        print('\n---- TRUSTEE SHARES ----')
+        print(repr(trustees_shares))
+        print('---- TRUSTEE SHARES ----\n')
+
         for share in trustees_shares:
-            results = self.bulletin_board.process_message('trustee_partial_decrypt', share)
+            results = self.bulletin_board.process_message('trustee_share', share)
+
+        print('\n---- RESULTS ----')
+        print(repr(results))
+        print('---- RESULTS ----\n')
 
         for question_id, question in results.items():
             print(f'Question {question_id}:')

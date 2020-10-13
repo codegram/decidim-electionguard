@@ -51,7 +51,7 @@ class ProcessTrusteeElectionKeys(ElectionStep):
             self.next_step = ProcessTrusteesPartialElectionKey()
 
             return {
-                'owner_id': context.guardian_id,
+                'guardian_id': context.guardian_id,
                 'partial_keys': [
                     serialize(context.guardian.share_election_partial_key_backup(guardian_id))
                     for guardian_id in context.guardian_ids
@@ -64,7 +64,7 @@ class ProcessTrusteesPartialElectionKey(ElectionStep):
     message_type = 'trustee_partial_election_key'
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        if message['owner_id'] == context.guardian_id:
+        if message['guardian_id'] == context.guardian_id:
             return
 
         for partial_keys_backup in message['partial_keys']:
@@ -77,7 +77,7 @@ class ProcessTrusteesPartialElectionKey(ElectionStep):
             # TODO: check that verifications are OK
 
             return {
-                'owner_id': context.guardian_id,
+                'guardian_id': context.guardian_id,
                 'verifications': [
                     serialize(context.guardian.verify_election_partial_key_backup(guardian_id))
                     for guardian_id in context.guardian_ids
@@ -92,11 +92,11 @@ class ProcessTrusteeVerification(ElectionStep):
     message_type = 'trustee_verification'
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        if message['owner_id'] == context.guardian_id:
+        if message['guardian_id'] == context.guardian_id:
             return
 
         self.received_verifications = self.received_verifications or {context.guardian_id}
-        self.received_verifications.add(message['owner_id'])
+        self.received_verifications.add(message['guardian_id'])
 
         # TODO: everything should be ok
         if context.guardian_ids == self.received_verifications:
@@ -113,11 +113,11 @@ class ProcessJointElectionKey(ElectionStep):
         # TODO: coefficient validation keys???
         # TODO: check joint key, without using private variables if possible
         #         serialize(elgamal_combine_public_keys(context.guardian._guardian_election_public_keys.values()))
-        self.next_step = ProcessStartDecrypt()
+        self.next_step = ProcessTallyCast()
 
 
-class ProcessStartDecrypt(ElectionStep):
-    message_type = 'start_decrypt'
+class ProcessTallyCast(ElectionStep):
+    message_type = 'tally_cast'
 
     def process_message(self, message_type: str, message: dict, context: Context):
         contests: Dict[CONTEST_ID, CiphertextDecryptionContest] = {}
