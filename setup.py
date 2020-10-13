@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name='decidim.electionguard',
       version='0.1.0',
@@ -7,7 +7,6 @@ setup(name='decidim.electionguard',
       author='Codegram',
       author_email='leo@codegram.com',
       license='MIT',
-      packages=['decidim.electionguard'],
-      package_dir={
-        'decidim.electionguard': 'src'
-      })
+      package_dir={"": "src"},
+      packages=find_packages('src')
+      )
