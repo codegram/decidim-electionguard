@@ -1,7 +1,6 @@
 from base64 import b64encode, b64decode
 from electionguard.group import ElementModP, ElementModQ
 import electionguard.serializable
-from gmpy2 import mpz
 
 # -- TEMPORARY MONKEYPATCH JSONS SERIALIZATION --
 old_set_serializers = electionguard.serializable.set_serializers
@@ -27,7 +26,7 @@ electionguard.serializable.set_deserializers = set_deserializers
 
 
 def serialize_big_number(obj: object, **_):
-    number = int(obj.to_int())
+    number = obj.to_int()
     return b64encode(
         number.to_bytes(
             (number.bit_length() + 7) // 8,
@@ -37,7 +36,7 @@ def serialize_big_number(obj: object, **_):
 
 
 def deserialize_big_number(obj, cls, **_):
-    return cls(mpz(int.from_bytes(b64decode(obj), byteorder='little')))
+    return cls(int.from_bytes(b64decode(obj), byteorder='little'))
 
 
 def serialize(obj, include_private: bool = False):
