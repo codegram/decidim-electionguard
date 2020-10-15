@@ -1,4 +1,4 @@
-# decidim.electionguard
+# decidim-electionguard
 
 Wrappers used to integrate ElectionGuard python code onto Decidim Elections module. It consists on three parts:
 
