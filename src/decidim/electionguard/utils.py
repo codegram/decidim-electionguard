@@ -1,54 +1,21 @@
-from base64 import b64encode, b64decode
-from electionguard.group import ElementModP, ElementModQ
-import electionguard.serializable
-
-# -- TEMPORARY MONKEYPATCH JSONS SERIALIZATION --
-old_set_serializers = electionguard.serializable.set_serializers
-old_set_deserializers = electionguard.serializable.set_deserializers
-electionguard.serializable.KEYS_TO_REMOVE += ['nonce']  # Remove nonces when serializing to JSON
+from electionguard.group import ElementModP
+from electionguard.serializable import write_json_object, read_json_object
+from .serializable import monkey_patch_serialization
 
 
-def set_serializers():
-    old_set_serializers()
-    electionguard.serializable.set_serializer(serialize_big_number, ElementModP)
-    electionguard.serializable.set_serializer(serialize_big_number, ElementModQ)
-
-
-def set_deserializers():
-    old_set_serializers()
-    electionguard.serializable.set_deserializer(deserialize_big_number, ElementModP)
-    electionguard.serializable.set_deserializer(deserialize_big_number, ElementModQ)
-
-
-electionguard.serializable.set_serializers = set_serializers
-electionguard.serializable.set_deserializers = set_deserializers
-# -----------------------------------------------
-
-
-def serialize_big_number(obj: object, **_):
-    number = obj.to_int()
-    return b64encode(
-        number.to_bytes(
-            (number.bit_length() + 7) // 8,
-            byteorder='little'
-        )
-    ).decode('utf-8')
-
-
-def deserialize_big_number(obj, cls, **_):
-    return cls(int.from_bytes(b64decode(obj), byteorder='little'))
+monkey_patch_serialization()
 
 
 def serialize(obj, include_private: bool = False):
-    return electionguard.serializable.write_json_object(obj, not include_private)
+    return write_json_object(obj, not include_private)
 
 
 def deserialize(obj, type):
-    return electionguard.serializable.read_json_object(obj, type)
+    return read_json_object(obj, type)
 
 
 def deserialize_key(obj):
-    return deserialize_big_number(obj, ElementModP)
+    return read_json_object(obj, ElementModP)
 
 
 class InvalidElectionDescription(Exception):
@@ -66,8 +33,8 @@ def pair_with_object_id(obj):
 
 
 def complete_election_description(election_description: dict) -> dict:
-    complete_description = {
-        **election_description,
+    complete_description = dict(election_description)
+    complete_description.update({
         'contact_information': {
             'address_line': [],
             'name': 'Organization name',
@@ -96,7 +63,7 @@ def complete_election_description(election_description: dict) -> dict:
                 'geopolitical_unit_ids': ['a-place']
             }
         ]
-    }
+    })
 
     for contest in complete_description['contests']:
         contest['electoral_district_id'] = 'a-place'
