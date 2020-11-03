@@ -1,5 +1,5 @@
 import unittest
-from .utils import create_election_test_message, joint_election_key_test_message
+from .utils import create_election_test_message, joint_election_key_test_message, deterministic_encrypted_ballot, remove_unused
 from decidim.electionguard.voter import Voter
 
 
@@ -24,6 +24,17 @@ class TestVoter(unittest.TestCase):
         # TODO: assert nonces removal
         # TODO: assert number of selections for each contest
         # TODO: assert decryption of the ballot
+
+    def test_deterministic(self):
+        self.voter.process_message('create_election', create_election_test_message())
+        self.voter.process_message('joint_election_key', joint_election_key_test_message())
+
+        encrypted_ballot = self.voter.encrypt({
+            'question1': ['question1-no-selection'],
+            'question2': ['question2-first-project-selection', 'question2-fourth-project-selection']
+        }, deterministic=True)
+
+        self.assertEqual(remove_unused(encrypted_ballot), deterministic_encrypted_ballot())
 
 
 if __name__ == '__main__':

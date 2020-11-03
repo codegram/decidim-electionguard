@@ -1,6 +1,6 @@
 from electionguard.ballot import PlaintextBallot, PlaintextBallotContest, PlaintextBallotSelection
 from electionguard.encrypt import encrypt_ballot, selection_from
-from electionguard.group import ElementModQ
+from electionguard.group import ElementModQ, ElementModP
 from electionguard.utils import get_optional
 from typing import List
 from .common import Context, ElectionStep, Wrapper
@@ -8,7 +8,7 @@ from .utils import MissingJointKey, serialize, deserialize_key
 
 
 class VoterContext(Context):
-    has_joint_key: bool = False
+    joint_key: ElementModP = None
 
 
 class ProcessCreateElection(ElectionStep):
@@ -23,11 +23,9 @@ class ProcessJointElectionKey(ElectionStep):
     message_type = 'joint_election_key'
 
     def process_message(self, message_type: str, message: dict, context: Context):
-        joint_key = deserialize_key(message['joint_election_key'])
-
-        context.election_builder.set_public_key(get_optional(joint_key))
+        context.joint_key = deserialize_key(message['joint_election_key'])
+        context.election_builder.set_public_key(get_optional(context.joint_key))
         context.election_metadata, context.election_context = get_optional(context.election_builder.build())
-        context.has_joint_key = True
 
 
 class Voter(Wrapper):
@@ -37,8 +35,8 @@ class Voter(Wrapper):
         super().__init__(VoterContext(), ProcessCreateElection())
         self.ballot_id = ballot_id
 
-    def encrypt(self, ballot: dict) -> dict:
-        if not self.context.has_joint_key:
+    def encrypt(self, ballot: dict, deterministic: bool = False) -> dict:
+        if not self.context.joint_key:
             raise MissingJointKey()
 
         ballot_style: str = self.context.election.ballot_styles[0].object_id
@@ -56,11 +54,13 @@ class Voter(Wrapper):
 
         # TODO: store the audit information somewhere
 
-        return serialize(encrypt_ballot(
+        encrypted_ballot = serialize(encrypt_ballot(
             plaintext_ballot,
             self.context.election_metadata,
             self.context.election_context,
             ElementModQ(0),
-            None,
+            self.context.joint_key if deterministic else None,
             True
         ))
+
+        return encrypted_ballot
