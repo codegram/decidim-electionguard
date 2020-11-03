@@ -11,12 +11,39 @@ NUMBER_OF_VOTERS = 10
 
 class TestIntegration(unittest.TestCase):
     def test_complete(self):
+        self.reset_state = False
+        self.show_output = True
         self.configure_election()
         self.key_ceremony()
         self.encrypt_ballots()
         self.cast_votes()
         self.decrypt_tally()
         self.publish_and_verify()
+
+    def test_without_state(self):
+        self.reset_state = True
+        self.show_output = False
+        self.configure_election()
+        self.key_ceremony()
+        self.encrypt_ballots()
+        self.cast_votes()
+        self.decrypt_tally()
+        self.publish_and_verify()
+
+    def checkpoint(self, step, output=None):
+        if self.show_output:
+            if output:
+                print('\n____ ' + step + ' ____')
+                print(repr(output))
+                print('‾‾‾‾ ' + step + ' ‾‾‾‾')
+            else:
+                print('\n---- ' + step + ' ----')
+
+        if self.reset_state:
+            self.bulletin_board = self.bulletin_board.backup()
+            self.trustees = [trustee.backup() for trustee in self.trustees]
+            self.bulletin_board = BulletinBoard.restore(self.bulletin_board)
+            self.trustees = [Trustee.restore(trustee) for trustee in self.trustees]
 
     def configure_election(self):
         self.election_message = create_election_test_message()
@@ -35,12 +62,10 @@ class TestIntegration(unittest.TestCase):
             for trustee in self.trustees
         ]
 
+        self.checkpoint("CREATE ELECTION")
+
         for public_keys in trustees_public_keys:
             self.bulletin_board.process_message('trustee_election_keys', public_keys)
-
-        print('\n---- PUBLIC KEYS ----')
-        print(repr(trustees_public_keys))
-        print('---- END PUBLIC KEYS ----\n')
 
         trustees_partial_public_keys = list(filter(None, [
             trustee.process_message('trustee_election_keys', public_keys)
@@ -49,12 +74,10 @@ class TestIntegration(unittest.TestCase):
             if trustee.context.guardian_id != public_keys['owner_id']
         ]))
 
+        self.checkpoint("PUBLIC KEYS", trustees_public_keys)
+
         for partial_public_keys in trustees_partial_public_keys:
             self.bulletin_board.process_message('trustee_partial_election_key', partial_public_keys)
-
-        print('\n---- PARTIAL PUBLIC KEYS ----')
-        print(repr(trustees_partial_public_keys))
-        print('---- END PARTIAL PUBLIC KEYS ----\n')
 
         trustees_verifications = list(filter(None, [
             trustee.process_message('trustee_partial_election_key', partial_public_keys)
@@ -63,25 +86,22 @@ class TestIntegration(unittest.TestCase):
             if trustee.context.guardian_id != partial_public_keys['guardian_id']
         ]))
 
+        self.checkpoint("PARTIAL PUBLIC KEYS", trustees_partial_public_keys)
+
         for trustee_verifications in trustees_verifications:
             self.joint_election_key = self.bulletin_board.process_message('trustee_verification', trustee_verifications)
 
-        print('\n---- VERIFICATIONS ----')
-        print(repr(trustees_verifications))
-        print('---- END VERIFICATIONS ----\n')
-
-        # Process verifications results
         for verification in trustees_verifications:
             for trustee in self.trustees:
                 if trustee.context.guardian_id != verification['guardian_id']:
                     trustee.process_message('trustee_verification', verification)
 
+        self.checkpoint("VERIFICATIONS", trustees_verifications)
+
         for trustee in self.trustees:
             trustee.process_message('joint_election_key', self.joint_election_key)
 
-        print('\n---- JOINT ELECTION KEY ----')
-        print(repr(self.joint_election_key))
-        print('---- JOINT ELECTION KEY ----\n')
+        self.checkpoint("JOINT ELECTION KEY", self.joint_election_key)
 
     def encrypt_ballots(self):
         possible_answers = [
@@ -102,22 +122,30 @@ class TestIntegration(unittest.TestCase):
                 (contest['object_id'], sample(contest['selections'], choice(contest['number'])))
                 for contest in possible_answers
             )
-
-            print(ballot)
-
             self.encrypted_ballots.append(voter.encrypt(ballot))
 
-    def cast_votes(self):
-        print('\n---- BALLOT BOX OPEN ----')
-        self.bulletin_board.open_ballot_box()
+        voter = Voter('a-voter')
+        voter.process_message('create_election', self.election_message)
+        voter.process_message('joint_election_key', self.joint_election_key)
+        encrypted_ballot = voter.encrypt(ballot, True)
+        self.encrypted_ballots.append(encrypted_ballot)
 
-        self.accepted_ballots = list(filter(
-            lambda ballot: self.bulletin_board.process_message('cast_vote', ballot),
-            self.encrypted_ballots
-        ))
+    def cast_votes(self):
+        self.bulletin_board.open_ballot_box()
+        self.checkpoint("OPEN BALLOT BOX")
+
+        self.accepted_ballots = []
+
+        for encrypted_ballot in self.encrypted_ballots:
+            accepted = self.bulletin_board.process_message('cast_vote', encrypted_ballot)
+            if accepted:
+                self.accepted_ballots.append(encrypted_ballot)
+                self.checkpoint("BALLOT ACCEPTED " + encrypted_ballot["object_id"], encrypted_ballot)
+            else:
+                self.checkpoint("BALLOT REJECTED " + encrypted_ballot["object_id"])
 
         self.bulletin_board.close_ballot_box()
-        print('---- BALLOT BOX CLOSED ----\n')
+        self.checkpoint("CLOSE BALLOT BOX")
 
     def decrypt_tally(self):
         for ballot in self.accepted_ballots:
@@ -125,30 +153,25 @@ class TestIntegration(unittest.TestCase):
 
         tally_cast = self.bulletin_board.get_tally_cast()
 
-        print('\n---- TALLY CAST ----')
-        print(repr(tally_cast))
-        print('---- TALLY CAST ----\n')
+        self.checkpoint("TALLY CAST", tally_cast)
 
         trustees_shares = [
             trustee.process_message('tally_cast', tally_cast)
             for trustee in self.trustees
         ]
 
-        print('\n---- TRUSTEE SHARES ----')
-        print(repr(trustees_shares))
-        print('---- TRUSTEE SHARES ----\n')
+        self.checkpoint("TRUSTEE SHARES", trustees_shares)
 
         for share in trustees_shares:
             results = self.bulletin_board.process_message('trustee_share', share)
 
-        print('\n---- RESULTS ----')
-        print(repr(results))
-        print('---- RESULTS ----\n')
+        self.checkpoint("RESULTS", results)
 
-        for question_id, question in results.items():
-            print(f'Question {question_id}:')
-            for selection_id, selection in question['selections'].items():
-                print(f'Option {selection_id}: ' + str(selection['tally']))
+        if self.show_output:
+            for question_id, question in results.items():
+                print(f'Question {question_id}:')
+                for selection_id, selection in question['selections'].items():
+                    print(f'Option {selection_id}: ' + str(selection['tally']))
 
     def publish_and_verify(self):
         # see publish.py

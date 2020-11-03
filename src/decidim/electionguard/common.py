@@ -1,6 +1,10 @@
 from electionguard.election import CiphertextElectionContext, ElectionDescription, InternalElectionDescription
 from electionguard.election_builder import ElectionBuilder
 from .utils import complete_election_description, InvalidElectionDescription
+try:
+    import cPickle as pickle
+except:  # noqa: E722
+    import pickle
 
 
 class Context:
@@ -56,3 +60,9 @@ class Wrapper:
             self.step = self.step.next_step
 
         return result
+
+    def backup(self) -> dict:
+        return pickle.dumps(self)
+
+    def restore(backup: dict):
+        return pickle.loads(backup)

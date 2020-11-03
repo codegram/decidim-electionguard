@@ -5,7 +5,6 @@ from electionguard.guardian import Guardian
 from electionguard.tally import CiphertextTallyContest
 from electionguard.types import CONTEST_ID, SELECTION_ID
 from electionguard.utils import get_optional
-from pickle import loads, dumps
 from typing import Dict, Set
 from .common import Context, ElectionStep, Wrapper
 from .utils import pair_with_object_id, serialize, deserialize, deserialize_key
@@ -146,9 +145,3 @@ class ProcessTallyCast(ElectionStep):
 class Trustee(Wrapper):
     def __init__(self, guardian_id: str) -> None:
         super().__init__(TrusteeContext(guardian_id), ProcessCreateElection())
-
-    def backup(self) -> dict:
-        return dumps(self)
-
-    def restore(backup: dict):
-        return loads(backup)
