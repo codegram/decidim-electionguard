@@ -7,6 +7,6 @@ setup(name='decidim-electionguard',
       author='Codegram',
       author_email='leo@codegram.com',
       license='MIT',
-      package_dir={"": "src"},
-      packages=find_packages('src')
+      package_dir={'': 'src', 'tests': 'tests'},
+      packages=find_packages('src', 'tests')
       )

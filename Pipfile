@@ -7,8 +7,8 @@ verify_ssl = true
 flake8 = ">=3.8.3"
 
 [packages]
-electionguard = '>=1.1.9'
-jsons = '>=1.1.2'
+electionguard = '==1.1.10'
+jsons = '==1.2'
 
 [requires]
 python_version = "3.8"
