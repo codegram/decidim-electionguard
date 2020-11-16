@@ -8,5 +8,9 @@ setup(name='decidim-electionguard',
       author_email='leo@codegram.com',
       license='MIT',
       package_dir={'': 'src', 'tests': 'tests'},
-      packages=find_packages('src', 'tests')
+      packages=find_packages('src', 'tests'),
+      install_requires=[
+          'electionguard==1.1.10',
+          'jsons==1.2'
+      ]
       )
