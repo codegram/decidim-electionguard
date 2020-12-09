@@ -3,6 +3,7 @@ from random import choice, sample
 from decidim.electionguard.bulletin_board import BulletinBoard
 from decidim.electionguard.trustee import Trustee
 from decidim.electionguard.voter import Voter
+from decidim.electionguard.utils import InvalidBallot
 from .utils import create_election_test_message, open_ballot_box_message, close_ballot_box_message
 
 
