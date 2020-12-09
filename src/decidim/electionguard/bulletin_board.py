@@ -48,7 +48,10 @@ class ProcessTrusteeElectionKeys(ElectionStep):
 class ProcessTrusteeElectionPartialKeys(ElectionStep):
     message_type = 'trustee_partial_election_keys'
 
-    partial_keys_received: Set[str] = set()
+    partial_keys_received: Set[str]
+
+    def setup(self):
+        self.partial_keys_received = set()
 
     def process_message(self, message_type: str, message: dict, context: Context):
         self.partial_keys_received.add(message['guardian_id'])
@@ -61,7 +64,10 @@ class ProcessTrusteeElectionPartialKeys(ElectionStep):
 class ProcessTrusteeVerification(ElectionStep):
     message_type = 'trustee_verification'
 
-    verification_received: Set[str] = set()
+    verification_received: Set[str]
+
+    def setup(self):
+        self.verification_received = set()
 
     def process_message(self, message_type: str, message: dict, context: Context):
         self.verification_received.add(message['guardian_id'])

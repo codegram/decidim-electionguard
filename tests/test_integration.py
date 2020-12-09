@@ -71,7 +71,6 @@ class TestIntegration(unittest.TestCase):
             trustee.process_message('trustee_election_keys', public_keys)
             for public_keys in trustees_public_keys
             for trustee in self.trustees
-            if trustee.context.guardian_id != public_keys['owner_id']
         ]))
 
         self.checkpoint("PUBLIC KEYS", trustees_public_keys)
@@ -83,7 +82,6 @@ class TestIntegration(unittest.TestCase):
             trustee.process_message('trustee_partial_election_keys', partial_public_keys)
             for partial_public_keys in trustees_partial_public_keys
             for trustee in self.trustees
-            if trustee.context.guardian_id != partial_public_keys['guardian_id']
         ]))
 
         self.checkpoint("PARTIAL PUBLIC KEYS", trustees_partial_public_keys)
@@ -93,8 +91,7 @@ class TestIntegration(unittest.TestCase):
 
         for verification in trustees_verifications:
             for trustee in self.trustees:
-                if trustee.context.guardian_id != verification['guardian_id']:
-                    trustee.process_message('trustee_verification', verification)
+                trustee.process_message('trustee_verification', verification)
 
         self.checkpoint("VERIFICATIONS", trustees_verifications)
 

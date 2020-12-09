@@ -86,15 +86,14 @@ class ProcessTrusteesPartialElectionKeys(ElectionStep):
 
 
 class ProcessTrusteeVerification(ElectionStep):
-    received_verifications: Set[str] = None
+    received_verifications: Set[str]
 
     message_type = 'trustee_verification'
 
-    def process_message(self, message_type: str, message: dict, context: Context):
-        if message['guardian_id'] == context.guardian_id:
-            return
+    def setup(self):
+        self.received_verifications = set()
 
-        self.received_verifications = self.received_verifications or {context.guardian_id}
+    def process_message(self, message_type: str, message: dict, context: Context):
         self.received_verifications.add(message['guardian_id'])
 
         # TODO: everything should be ok

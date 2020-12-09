@@ -31,6 +31,10 @@ class ElectionStep:
 
     def __init__(self) -> None:
         self.next_step = None
+        self.setup()
+
+    def setup(self):
+        pass
 
     def skip_message(self, message_type: str):
         return self.message_type != message_type
