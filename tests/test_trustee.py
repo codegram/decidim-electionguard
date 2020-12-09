@@ -31,7 +31,7 @@ class TestTrustee(unittest.TestCase):
         print('---- END PARTIAL PUBLIC KEYS ----\n')
 
         trustees_verifications = list(filter(None, [
-            trustee.process_message('trustee_partial_election_key', partial_public_keys)
+            trustee.process_message('trustee_partial_election_keys', partial_public_keys)
             for partial_public_keys in trustees_partial_public_keys
             for trustee in self.trustees
             if trustee.context.guardian_id != partial_public_keys['guardian_id']

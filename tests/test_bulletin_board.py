@@ -1,6 +1,6 @@
 import unittest
-from .utils import create_election_test_message, trustees_public_keys
 from decidim.electionguard.bulletin_board import BulletinBoard
+from .utils import create_election_test_message, trustees_public_keys
 
 
 class TestBulletinBoard(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestBulletinBoard(unittest.TestCase):
             self.bulletin_board.process_message('trustee_election_keys', public_keys)
 
         for trustee in election_message['trustees']:
-            self.bulletin_board.process_message('trustee_partial_election_key', {'guardian_id': trustee['name']})
+            self.bulletin_board.process_message('trustee_partial_election_keys', {'guardian_id': trustee['name']})
 
         for trustee in election_message['trustees']:
             joint_key = self.bulletin_board.process_message('trustee_verification', {'guardian_id': trustee['name']})

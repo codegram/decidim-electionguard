@@ -28,6 +28,11 @@ class MissingJointKey(Exception):
     pass
 
 
+class InvalidBallot(Exception):
+    '''Exception raised when the received ballot is not valid.'''
+    pass
+
+
 def pair_with_object_id(obj):
     return (obj.object_id, obj)
 

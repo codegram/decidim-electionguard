@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Dict, Set
 from electionguard.ballot import CiphertextBallot, from_ciphertext_ballot, BallotBoxState
 from electionguard.ballot_validator import ballot_is_valid_for_election
 from electionguard.decryption_share import CiphertextDecryptionSelection
@@ -8,17 +9,12 @@ from electionguard.group import ElementModP
 from electionguard.tally import CiphertextTally, tally_ballot, PlaintextTallyContest, PlaintextTallySelection
 from electionguard.types import CONTEST_ID, GUARDIAN_ID, SELECTION_ID
 from electionguard.utils import get_optional
-from typing import Dict, Set
 from .common import Context, ElectionStep, Wrapper
-from .utils import (
-  MissingJointKey, pair_with_object_id,
-  serialize, deserialize, deserialize_key
-)
+from .utils import InvalidBallot, pair_with_object_id, serialize, deserialize, deserialize_key
 
 
 class BulletinBoardContext(Context):
     public_keys: Dict[str, ElementModP]
-    has_joint_key: bool
     tally: CiphertextTally
     shares: Dict[GUARDIAN_ID, Dict]
 
@@ -46,11 +42,11 @@ class ProcessTrusteeElectionKeys(ElectionStep):
         # TO-DO: verify keys?
 
         if len(context.public_keys) == context.number_of_guardians:
-            self.next_step = ProcessTrusteeElectionPartialKey()
+            self.next_step = ProcessTrusteeElectionPartialKeys()
 
 
-class ProcessTrusteeElectionPartialKey(ElectionStep):
-    message_type = 'trustee_partial_election_key'
+class ProcessTrusteeElectionPartialKeys(ElectionStep):
+    message_type = 'trustee_partial_election_keys'
 
     partial_keys_received: Set[str] = set()
 
@@ -75,16 +71,30 @@ class ProcessTrusteeVerification(ElectionStep):
             joint_key = elgamal_combine_public_keys(context.public_keys.values())
             context.election_builder.set_public_key(get_optional(joint_key))
             context.election_metadata, context.election_context = get_optional(context.election_builder.build())
-            context.has_joint_key = True
+            self.next_step = ProcessOpenBallotBox()
             return {'joint_election_key': serialize(joint_key)}
 
 
-class ProcessCastVote(ElectionStep):
-    message_type = 'cast_vote'
+class ProcessOpenBallotBox(ElectionStep):
+    message_type = 'open_ballot_box'
 
     def process_message(self, message_type: str, message: dict, context: Context):
+        self.next_step = ProcessCastVote()
+
+
+class ProcessCastVote(ElectionStep):
+    def skip_message(self, message_type: str):
+        return message_type != 'cast_vote' and message_type != 'close_ballot_box'
+
+    def process_message(self, message_type: str, message: dict, context: Context):
+        if message_type == 'close_ballot_box':
+            context.tally = CiphertextTally('election-results', context.election_metadata, context.election_context)
+            self.next_step = ProcessTrusteeShare()
+            return
+
         ballot = deserialize(message, CiphertextBallot)
-        return ballot_is_valid_for_election(ballot, context.election_metadata, context.election_context)
+        if not ballot_is_valid_for_election(ballot, context.election_metadata, context.election_context):
+            raise InvalidBallot()
 
 
 class ProcessTrusteeShare(ElectionStep):
@@ -128,16 +138,6 @@ class ProcessTrusteeShare(ElectionStep):
 class BulletinBoard(Wrapper):
     def __init__(self) -> None:
         super().__init__(BulletinBoardContext(), ProcessCreateElection())
-
-    def open_ballot_box(self):
-        if not self.context.has_joint_key:
-            raise MissingJointKey()
-
-        self.step = ProcessCastVote()
-
-    def close_ballot_box(self):
-        self.context.tally = CiphertextTally('election-results', self.context.election_metadata, self.context.election_context)
-        self.step = ProcessTrusteeShare()
 
     def add_ballot(self, ballot: dict):
         ciphertext_ballot = deserialize(ballot, CiphertextBallot)

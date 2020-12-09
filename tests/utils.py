@@ -120,6 +120,18 @@ def joint_election_key_test_message():
     }
 
 
+def open_ballot_box_message():
+    return {
+        'message_id': 'decidim-barcelona.1.open_ballot_box+a.decidim-barcelona'
+    }
+
+
+def close_ballot_box_message():
+    return {
+        'message_id': 'decidim-barcelona.1.close_ballot_box+a.decidim-barcelona'
+    }
+
+
 def deterministic_encrypted_ballot():
     return {
         'ballot_style': 'ballot-style',

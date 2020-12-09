@@ -47,7 +47,7 @@ class ProcessTrusteeElectionKeys(ElectionStep):
 
         if context.guardian.all_public_keys_received():
             context.guardian.generate_election_partial_key_backups()
-            self.next_step = ProcessTrusteesPartialElectionKey()
+            self.next_step = ProcessTrusteesPartialElectionKeys()
 
             return {
                 'guardian_id': context.guardian_id,
@@ -59,8 +59,8 @@ class ProcessTrusteeElectionKeys(ElectionStep):
             }
 
 
-class ProcessTrusteesPartialElectionKey(ElectionStep):
-    message_type = 'trustee_partial_election_key'
+class ProcessTrusteesPartialElectionKeys(ElectionStep):
+    message_type = 'trustee_partial_election_keys'
 
     def process_message(self, message_type: str, message: dict, context: Context):
         if message['guardian_id'] == context.guardian_id:
